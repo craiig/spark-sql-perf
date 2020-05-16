@@ -106,10 +106,12 @@ abstract class Benchmark(
       tags: Map[String, String] = Map.empty,
       timeout: Long = 0L,
       resultLocation: String = resultsLocation,
-      forkThread: Boolean = true) = {
+      forkThread: Boolean = true,
+      resultCallback: (String, Int, scala.util.Try[BenchmarkResult]) => Unit = (name:String, iter:Int, result:scala.util.Try[BenchmarkResult]) => ()
+      ) = {
 
     new ExperimentStatus(executionsToRun, includeBreakdown, iterations, variations, tags,
-      timeout, resultLocation, sqlContext, allTables, currentConfiguration, forkThread = forkThread)
+      timeout, resultLocation, sqlContext, allTables, currentConfiguration, forkThread = forkThread, resultCallback=resultCallback)
   }
 
 
@@ -298,7 +300,9 @@ object Benchmark {
       sqlContext: SQLContext,
       allTables: Seq[Table],
       currentConfiguration: BenchmarkConfiguration,
-      forkThread: Boolean = true) {
+      forkThread: Boolean = true,
+      resultCallback: (String, Int, Try[BenchmarkResult]) => Unit = (name:String, iter:Int, result:Try[BenchmarkResult]) => ()
+    ) {
     val currentResults = new collection.mutable.ArrayBuffer[BenchmarkResult]()
     val currentRuns = new collection.mutable.ArrayBuffer[ExperimentRun]()
     val currentMessages = new collection.mutable.ArrayBuffer[String]()
@@ -395,6 +399,8 @@ object Benchmark {
               q.benchmark(includeBreakdown, setup, currentMessages, timeout,
                 forkThread=forkThread)
             }
+
+            resultCallback(q.name, i, singleResultT)
 
             singleResultT match {
               case Success(singleResult) =>
